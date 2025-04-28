@@ -89,7 +89,7 @@ export default function Index() {
   const navigate = useNavigate();
 
   // Text to be animated
-  const fullText = "Test: Find a gift for a";
+  const fullText = "Find a gift for a";
   const [displayText, setDisplayText] = useState<string | undefined>(undefined);
   const [gender, setGender] = useState<string | undefined>(undefined);
   const [location, setLocation] = useState<string | undefined>(undefined);
