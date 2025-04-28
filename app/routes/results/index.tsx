@@ -1,0 +1,454 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable jsx-a11y/click-events-have-key-events */
+/* eslint-disable jsx-a11y/no-static-element-interactions */
+import type { MetaFunction } from "@remix-run/node";
+import { useEffect, useState } from "react";
+import { useLocation, useNavigate } from "@remix-run/react";
+import {
+  ChevronDown,
+  ChevronUp,
+  ChevronLeft,
+  ChevronRight,
+  Search,
+  Filter,
+} from "lucide-react";
+import { testData as DummyData } from "~/util/testData";
+import { ProductCard } from "~/components/ui/product";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuPortal,
+  DropdownMenuSeparator,
+  DropdownMenuShortcut,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger,
+} from "~/components/ui/dropdown-menu";
+import { Button } from "~/components/ui/button";
+
+export const meta: MetaFunction = () => {
+  return [
+    { title: "Givving" },
+    { name: "description", content: "Welcome to Givving!" },
+    {
+      name: "viewport",
+      content:
+        "width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no",
+    },
+  ];
+};
+
+// Define filter types for type safety
+interface FilterOption {
+  id: string;
+  label: string;
+  count?: number;
+}
+
+interface FilterSection {
+  title: string;
+  id: string;
+  options: FilterOption[];
+}
+
+export default function Index() {
+  // Add new state for sidebar visibility
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [showOverlay, setShowOverlay] = useState(false);
+  const navigate = useNavigate();
+  const [selectedFilters, setSelectedFilters] = useState<
+    Record<string, string[]>
+  >({});
+  const [expandedSections, setExpandedSections] = useState<
+    Record<string, boolean>
+  >({
+    price: true,
+    brand: true,
+    rating: true,
+  });
+  // Products data
+  // const navigate = useNavigate();
+  const location = useLocation();
+
+  const state = location.state as { data: any; index: number };
+  console.log("State from location:", state);
+
+  const ideaResult = state.data.results[state.index];
+  const [searchQuery, setSearchQuery] = useState("");
+  const [sortOption, setSortOption] = useState("relevance");
+
+  // Toggle sidebar function
+  const toggleSidebar = () => {
+    setSidebarOpen((prev) => !prev);
+  };
+
+  // Toggle filter sections
+  const toggleSection = (sectionId: string) => {
+    setExpandedSections((prev) => ({
+      ...prev,
+      [sectionId]: !prev[sectionId],
+    }));
+  };
+
+  // Handle filter changes
+  const handleFilterChange = (sectionId: string, optionId: string) => {
+    setSelectedFilters((prev) => {
+      const currentFilters = prev[sectionId] || [];
+      if (currentFilters.includes(optionId)) {
+        return {
+          ...prev,
+          [sectionId]: currentFilters.filter((id) => id !== optionId),
+        };
+      } else {
+        return {
+          ...prev,
+          [sectionId]: [...currentFilters, optionId],
+        };
+      }
+    });
+  };
+
+  // Sample filter data
+  useEffect(() => {
+    // console.log(testData.results[0].filters[0].options[0])
+    const filters = ideaResult.filters.map((filter: any, index) => {
+      console.log(JSON.stringify(filter));
+      return {
+        title: filter.type,
+        id: index,
+        options: filter.options.map((option: any) => ({
+          id: option.id,
+          label: option.label,
+          count: option.count || 0,
+        })),
+      };
+    });
+    console.log(filters);
+
+    // setSelectedFilters(filters);
+  }, []);
+
+  const mapFilter = (filters: any) => {
+    // console.log(testData.results[0].filters[0].options[0])
+    return filters
+      .map((filter: any, index) => {
+        console.log("filter");
+        console.log(JSON.stringify(filter.options[0]));
+        if (!filter.type) {
+          return null;
+        }
+        return {
+          title: filter.type,
+          id: index,
+          options: filter.options.map((option: any, index) => ({
+            id: index,
+            label: option.text,
+          })),
+        };
+      })
+      .filter((filter: any) => filter !== null);
+  };
+
+  const filterSections: FilterSection[] = [
+    {
+      title: "Price Range",
+      id: "price",
+      options: [
+        { id: "under-50", label: "Under $50" },
+        { id: "50-100", label: "$50 - $100" },
+        { id: "100-200", label: "$100 - $200" },
+        { id: "over-200", label: "Over $200" },
+      ],
+    },
+    {
+      title: "Brand",
+      id: "brand",
+      options: [
+        { id: "audiotech", label: "AudioTech", count: 12 },
+        { id: "techgear", label: "TechGear", count: 8 },
+        { id: "smartlife", label: "SmartLife", count: 6 },
+        { id: "gadgetco", label: "GadgetCo", count: 4 },
+      ],
+    },
+    {
+      title: "Rating",
+      id: "rating",
+      options: [
+        { id: "4-up", label: "4★ & Up" },
+        { id: "3-up", label: "3★ & Up" },
+        { id: "2-up", label: "2★ & Up" },
+        { id: "1-up", label: "1★ & Up" },
+      ],
+    },
+  ];
+
+  const MainHeader = () => {
+    return (
+      <>
+        {/* Main Header with blue background and back button */}
+        <header className="w-full bg-[#F2F4FC] text-white z-20">
+          <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-center">
+            <div
+              className="flex items-center gap-2 cursor-pointer"
+              onClick={() => navigate("/ideas")}
+            >
+              <ChevronLeft size={18} className="text-givving-primary" />
+              <h1 className="font-medium text-givving-primary">
+                Go back to search and gift ideas list
+              </h1>
+            </div>
+          </div>
+        </header>
+      </>
+    );
+  };
+  const SecondaryHeader = (testData: any) => {
+    console.log("testData", testData.testData);
+
+    return (
+      <>
+        {/* Secondary Header with Filters and Search */}
+        <div className="w-full border-b border-gray-200 z-10 bg-white">
+          <div className="mx-auto px-4 py-2 flex items-center justify-center sm:justify-between">
+            <div className="w-full flex items-center justify-center sm:justify-start sm:space-x-3">
+              {/* Filter Button - toggles sidebar on mobile */}
+              <button
+                className="items-center gap-1 px-3 py-1.5 mr-52 bg-white rounded border border-gray-300 text-sm font-medium hover:bg-gray-50 hidden sm:flex"
+                onClick={() => setSidebarOpen(!sidebarOpen)}
+              >
+                <Filter size={16} />
+                <span className="hidden sm:inline">Filters</span>
+                <span className="inline sm:hidden">
+                  {sidebarOpen ? (
+                    <ChevronLeft size={14} />
+                  ) : (
+                    <ChevronRight size={14} />
+                  )}
+                </span>
+              </button>
+
+              {/* Sort Dropdown */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <div className="flex font-givving text-givving-primary text-sm md:text-xl">
+                    <span className="text-gray-400  sm:inline">
+                      Shop Idea {state.index + 1}:&nbsp;
+                    </span>
+                    <span>{testData.testData.results[state.index].group}</span>
+                    <div className="pointer-events-none flex items-center px-2 text-gray-700">
+                      <ChevronDown size={14} />
+                    </div>
+                  </div>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="md:w-auto w-80">
+                  <DropdownMenuGroup>
+                    {testData.testData.results.map((result, index) => (
+                      <DropdownMenuItem
+                        key={index}
+                        textValue="a"
+                        onSelect={(e) => {
+                          console.log("Selected item:", e);
+                        }}
+                      >
+                        <div className="flex font-givving text-givving-primary text-sm md:text-xl">
+                          <span className="text-gray-400 hidden sm:inline">
+                            Shop Idea {index + 1}: &nbsp;
+                          </span>
+                          {result.group}
+                        </div>
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuGroup>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+
+            {/* Search Box */}
+            <div className="relative flex-1 max-w-sm ml-4 hidden sm:block">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <Search size={16} className="text-gray-400" />
+              </div>
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search products..."
+                className="pl-10 pr-4 py-1.5 w-full text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+              />
+            </div>
+          </div>
+        </div>
+      </>
+    );
+  };
+
+  // Function to render filter section
+  const renderFilterSection = (section: FilterSection) => {
+    const isExpanded = expandedSections[section.id];
+
+    return (
+      <div key={section.id} className="border-b border-gray-200 py-4">
+        <button
+          className="flex items-center justify-between w-full text-left font-medium"
+          onClick={() => toggleSection(section.id)}
+        >
+          {section.title}
+          <span className="ml-2">
+            {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+          </span>
+        </button>
+
+        {isExpanded && (
+          <div className="mt-2 space-y-1">
+            {section.options.map((option) => (
+              <label
+                key={option.id}
+                className="flex items-center cursor-pointer py-1"
+              >
+                <input
+                  type="checkbox"
+                  className="mr-2 h-4 w-4"
+                  checked={(selectedFilters[section.id] || []).includes(
+                    option.id,
+                  )}
+                  onChange={() => handleFilterChange(section.id, option.id)}
+                />
+                <span>{option.label}</span>
+                {option.count !== undefined && (
+                  <span className="ml-auto text-gray-500 text-sm">
+                    {option.count}
+                  </span>
+                )}
+              </label>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  return (
+    <div className="fixed inset-0 overflow-hidden  flex flex-col">
+      <MainHeader />
+      <SecondaryHeader testData={state.data} />
+
+      {/* Main content area - now below both headers */}
+      <div className="flex flex-1 overflow-hidden">
+        {/* Sidebar Filters - only shown on desktop */}
+        <div
+          className={`${
+            sidebarOpen ? "w-64" : "w-0"
+          } bg-white border-r border-gray-200 overflow-y-auto overflow-x-hidden transition-all duration-300 ease-in-out hidden md:block`}
+        >
+          <div className="p-4">
+            {/* {filterSections.map(renderFilterSection)} */}
+            {mapFilter(ideaResult.filters).map(renderFilterSection)}
+
+            {Object.keys(selectedFilters).length > 0 && (
+              <button
+                className="mt-4 text-blue-500 hover:text-blue-700 text-sm"
+                onClick={() => setSelectedFilters({})}
+              >
+                Clear all filters
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Mobile Filter Button */}
+        <div className="md:hidden fixed bottom-4 left-4 z-10">
+          <button
+            className="bg-blue-500 text-white px-4 py-2 rounded-full shadow-lg flex items-center gap-2"
+            onClick={() => setShowOverlay(true)}
+          >
+            <Filter size={16} />
+            <span>Filters</span>
+          </button>
+        </div>
+
+        {/* Mobile Filter Overlay - FIXED VERSION */}
+        {showOverlay && (
+          <div
+            className="fixed inset-0 bg-black bg-opacity-50 z-50 md:hidden flex"
+            onClick={() => setShowOverlay(false)}
+          >
+            <div
+              className="ml-auto h-full w-80 bg-white overflow-y-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="p-4">
+                <div className="flex justify-between items-center mb-4">
+                  <h2 className="font-bold text-lg">Filters</h2>
+                  <button
+                    className="p-2 rounded-full hover:bg-gray-100"
+                    onClick={() => setShowOverlay(false)}
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="20"
+                      height="20"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <line x1="18" y1="6" x2="6" y2="18"></line>
+                      <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                  </button>
+                </div>
+
+                {filterSections.map(renderFilterSection)}
+
+                {Object.keys(selectedFilters).length > 0 && (
+                  <button
+                    className="mt-4 text-blue-500 hover:text-blue-700 text-sm"
+                    onClick={() => setSelectedFilters({})}
+                  >
+                    Clear all filters
+                  </button>
+                )}
+
+                <div className="mt-6 pt-4 border-t border-gray-200">
+                  <button
+                    className="w-full py-2 bg-blue-500 text-white rounded-md font-medium"
+                    onClick={() => setShowOverlay(false)}
+                  >
+                    Apply Filters
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Products Grid */}
+        <div className="flex-1 overflow-y-auto">
+          <div className="p-4 grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
+            {ideaResult.results.map((product, index) => (
+              // {products.map((product, index) => (
+              <ProductCard
+                key={index}
+                image={
+                  product.thumbnail ? product.thumbnail[0] : "/noimage.png"
+                }
+                name={product.title}
+                rating={product.rating || 0}
+                price={product.price}
+                seller={product.seller}
+                reviewCount={product?.reviews || 0}
+                link={product.link}
+              />
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
