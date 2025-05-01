@@ -19,16 +19,10 @@ import {
   DropdownMenuContent,
   DropdownMenuGroup,
   DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuPortal,
-  DropdownMenuSeparator,
-  DropdownMenuShortcut,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "~/components/ui/dropdown-menu";
 import { Button } from "~/components/ui/button";
+import { useSocket } from "~/useSocket";
 
 export const meta: MetaFunction = () => {
   return [
@@ -59,6 +53,9 @@ export default function Index() {
   // Add new state for sidebar visibility
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [showOverlay, setShowOverlay] = useState(false);
+  const [selectedProductFilters, setSelectedProductFilters] = useState<any[]>(
+    [],
+  );
   const navigate = useNavigate();
   const [selectedFilters, setSelectedFilters] = useState<
     Record<string, string[]>
@@ -74,12 +71,43 @@ export default function Index() {
   // const navigate = useNavigate();
   const location = useLocation();
 
-  const state = location.state as { data: any; index: number };
-  console.log("State from location:", state);
-
-  const ideaResult = state.data.results[state.index];
   const [searchQuery, setSearchQuery] = useState("");
-  const [sortOption, setSortOption] = useState("relevance");
+  const [ideaResult, setIdeaResult] = useState<any>(undefined);
+  const [selectedIndex, setSelectedIndex] = useState<number>(0);
+  const [selectedGroup, setSelectedGroup] = useState<any>(undefined);
+  const ss = useSocket();
+  const [isLoading, setIsLoading] = useState(false);
+  // const [selectedProductFilters, setSelectedProductFilters] = useState<any[]>(
+  //   [],
+  // );
+
+  useEffect(() => {
+    const state = location.state as { data: any; index: number };
+    if (!state || !state.data) {
+      // Handle the case where state is not available
+      console.error("No state data found");
+      return;
+    }
+    console.log("logged");
+    setSelectedIndex(state.index);
+    setIdeaResult(state.data.results);
+    setSelectedGroup(state.data.results[state.index]);
+    // console.log(selectedGroup);
+    // const ideaResult = state.data.results[state.index];
+  }, []);
+
+  useEffect(() => {
+    console.log(ss.message);
+    // check if message contains results
+    if (ss.message && ss.message.includes("results")) {
+      console.log("WebSocket message result received:");
+      const jsonObject = JSON.parse(ss.message);
+      // Turn off loading
+      // navigate to results
+      navigate("/ideas", { state: { data: jsonObject } });
+      setIsLoading(false);
+    }
+  }, [ss.message]);
 
   // Toggle sidebar function
   const toggleSidebar = () => {
@@ -112,32 +140,15 @@ export default function Index() {
     });
   };
 
-  // Sample filter data
-  useEffect(() => {
-    // console.log(testData.results[0].filters[0].options[0])
-    const filters = ideaResult.filters.map((filter: any, index) => {
-      console.log(JSON.stringify(filter));
-      return {
-        title: filter.type,
-        id: index,
-        options: filter.options.map((option: any) => ({
-          id: option.id,
-          label: option.label,
-          count: option.count || 0,
-        })),
-      };
-    });
-    console.log(filters);
-
-    // setSelectedFilters(filters);
-  }, []);
-
   const mapFilter = (filters: any) => {
+    if (!filters) {
+      return [];
+    }
     // console.log(testData.results[0].filters[0].options[0])
     return filters
       .map((filter: any, index) => {
-        console.log("filter");
-        console.log(JSON.stringify(filter.options[0]));
+        // console.log("filter");
+        // console.log(JSON.stringify(filter.options[0]));
         if (!filter.type) {
           return null;
         }
@@ -153,48 +164,20 @@ export default function Index() {
       .filter((filter: any) => filter !== null);
   };
 
-  const filterSections: FilterSection[] = [
-    {
-      title: "Price Range",
-      id: "price",
-      options: [
-        { id: "under-50", label: "Under $50" },
-        { id: "50-100", label: "$50 - $100" },
-        { id: "100-200", label: "$100 - $200" },
-        { id: "over-200", label: "Over $200" },
-      ],
-    },
-    {
-      title: "Brand",
-      id: "brand",
-      options: [
-        { id: "audiotech", label: "AudioTech", count: 12 },
-        { id: "techgear", label: "TechGear", count: 8 },
-        { id: "smartlife", label: "SmartLife", count: 6 },
-        { id: "gadgetco", label: "GadgetCo", count: 4 },
-      ],
-    },
-    {
-      title: "Rating",
-      id: "rating",
-      options: [
-        { id: "4-up", label: "4★ & Up" },
-        { id: "3-up", label: "3★ & Up" },
-        { id: "2-up", label: "2★ & Up" },
-        { id: "1-up", label: "1★ & Up" },
-      ],
-    },
-  ];
-
   const MainHeader = () => {
+    const location = useLocation();
+
     return (
       <>
         {/* Main Header with blue background and back button */}
         <header className="w-full bg-[#F2F4FC] text-white z-20">
-          <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-center">
+          <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-center md:h-[84px]">
             <div
               className="flex items-center gap-2 cursor-pointer"
-              onClick={() => navigate("/ideas")}
+              onClick={() => {
+                // navigate("/ideas");
+                navigate("/ideas", { state: { data: location.state.data } });
+              }}
             >
               <ChevronLeft size={18} className="text-givving-primary" />
               <h1 className="font-medium text-givving-primary">
@@ -207,38 +190,53 @@ export default function Index() {
     );
   };
   const SecondaryHeader = (testData: any) => {
-    console.log("testData", testData.testData);
+    if (!ideaResult) {
+      return <></>;
+    }
+    // console.log(ideaResult);
 
     return (
       <>
         {/* Secondary Header with Filters and Search */}
-        <div className="w-full border-b border-gray-200 z-10 bg-white">
-          <div className="mx-auto px-4 py-2 flex items-center justify-center sm:justify-between">
-            <div className="w-full flex items-center justify-center sm:justify-start sm:space-x-3">
+        <div className="w-full flex border-b border-gray-200 z-10 bg-white">
+          {isLoading && (
+            <div className="fixed inset-0 bg-white bg-opacity-80 z-50 flex flex-col items-center justify-center animate-in fade-in duration-300">
+              <div className="flex flex-col items-center">
+                <div className="w-16 h-16 border-4 border-givving-primary border-t-transparent rounded-full animate-spin mb-4"></div>
+                <h2 className="text-2xl font-givving text-givving-primary">
+                  Finding gift ideas...
+                </h2>
+              </div>
+            </div>
+          )}
+          <div className="w-full md:h-[84px] px-4 py-2 flex items-center">
+            <div className="w-[300px] items-center gap-4 hidden sm:block">
               {/* Filter Button - toggles sidebar on mobile */}
               <button
-                className="items-center gap-1 px-3 py-1.5 mr-52 bg-white rounded border border-gray-300 text-sm font-medium hover:bg-gray-50 hidden sm:flex"
+                className="items-center gap-2 px-4 py-2 bg-white rounded border border-givving-primary text-givving-primary text-base font-medium hover:bg-gray-50 hidden sm:flex mr-6"
                 onClick={() => setSidebarOpen(!sidebarOpen)}
               >
-                <Filter size={16} />
+                <Filter size={20} />
                 <span className="hidden sm:inline">Filters</span>
                 <span className="inline sm:hidden">
                   {sidebarOpen ? (
-                    <ChevronLeft size={14} />
+                    <ChevronLeft size={16} />
                   ) : (
-                    <ChevronRight size={14} />
+                    <ChevronRight size={16} />
                   )}
                 </span>
               </button>
+            </div>
 
-              {/* Sort Dropdown */}
+            {/* Dropdown container - centered on mobile */}
+            <div className="flex-1 flex justify-center sm:justify-start items-center gap-4">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <div className="flex font-givving text-givving-primary text-sm md:text-xl">
-                    <span className="text-gray-400  sm:inline">
-                      Shop Idea {state.index + 1}:&nbsp;
+                  <div className="flex font-givving text-givving-primary text-sm md:text-xl text-center sm:text-left">
+                    <span className="text-gray-400 sm:inline">
+                      Shop Idea {selectedIndex + 1}:&nbsp;
                     </span>
-                    <span>{testData.testData.results[state.index].group}</span>
+                    <span>{ideaResult[selectedIndex].group}</span>
                     <div className="pointer-events-none flex items-center px-2 text-gray-700">
                       <ChevronDown size={14} />
                     </div>
@@ -246,12 +244,14 @@ export default function Index() {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent className="md:w-auto w-80">
                   <DropdownMenuGroup>
-                    {testData.testData.results.map((result, index) => (
+                    {ideaResult.map((result, index) => (
                       <DropdownMenuItem
                         key={index}
-                        textValue="a"
                         onSelect={(e) => {
-                          console.log("Selected item:", e);
+                          // console.log("Selected item index:", index);
+                          setSelectedIndex(index);
+                          setSelectedGroup(ideaResult[index]);
+                          // setSelectedGroup(ideaResult[index]);
                         }}
                       >
                         <div className="flex font-givving text-givving-primary text-sm md:text-xl">
@@ -267,18 +267,39 @@ export default function Index() {
               </DropdownMenu>
             </div>
 
-            {/* Search Box */}
-            <div className="relative flex-1 max-w-sm ml-4 hidden sm:block">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <Search size={16} className="text-gray-400" />
+            {/* Search Box - Right aligned */}
+            <div className="hidden sm:block w-[400px]">
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                  <Search size={18} className="text-givving-primary" />
+                </div>
+                <input
+                  type="text"
+                  // value={searchQuery}
+                  // onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && e.currentTarget.value.trim()) {
+                      // Prevent adding if already at max
+                      console.log("enter clicked");
+                      console.log(e.currentTarget.value);
+                      const query = {
+                        budget: 500,
+                        about: e.currentTarget.value,
+                      };
+                      console.log("query", query);
+                      ss.sendMessage(
+                        JSON.stringify({
+                          query,
+                        }),
+                      );
+                      setIsLoading(true);
+                      e.currentTarget.value = "";
+                    }
+                  }}
+                  placeholder="Actually, I have an idea..."
+                  className="pl-12 pr-5 py-4 w-full text-sm border border-gray-300 rounded-full focus:outline-none focus:ring-1 focus:ring-givving-primary"
+                />
               </div>
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search products..."
-                className="pl-10 pr-4 py-1.5 w-full text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-              />
             </div>
           </div>
         </div>
@@ -317,7 +338,7 @@ export default function Index() {
                   )}
                   onChange={() => handleFilterChange(section.id, option.id)}
                 />
-                <span>{option.label}</span>
+                <span className="text-gray-500">{option.label}</span>
                 {option.count !== undefined && (
                   <span className="ml-auto text-gray-500 text-sm">
                     {option.count}
@@ -334,7 +355,7 @@ export default function Index() {
   return (
     <div className="fixed inset-0 overflow-hidden  flex flex-col">
       <MainHeader />
-      <SecondaryHeader testData={state.data} />
+      <SecondaryHeader testData={ideaResult} />
 
       {/* Main content area - now below both headers */}
       <div className="flex flex-1 overflow-hidden">
@@ -346,7 +367,7 @@ export default function Index() {
         >
           <div className="p-4">
             {/* {filterSections.map(renderFilterSection)} */}
-            {mapFilter(ideaResult.filters).map(renderFilterSection)}
+            {mapFilter(selectedGroup?.filters).map(renderFilterSection)}
 
             {Object.keys(selectedFilters).length > 0 && (
               <button
@@ -362,10 +383,10 @@ export default function Index() {
         {/* Mobile Filter Button */}
         <div className="md:hidden fixed bottom-4 left-4 z-10">
           <button
-            className="bg-blue-500 text-white px-4 py-2 rounded-full shadow-lg flex items-center gap-2"
+            className="bg-white text-givving-primary border border-givving-primary px-5 py-3 rounded-full shadow-lg flex items-center gap-2 text-base"
             onClick={() => setShowOverlay(true)}
           >
-            <Filter size={16} />
+            <Filter size={20} />
             <span>Filters</span>
           </button>
         </div>
@@ -404,7 +425,7 @@ export default function Index() {
                   </button>
                 </div>
 
-                {filterSections.map(renderFilterSection)}
+                {/* {filterSections.map(renderFilterSection)} */}
 
                 {Object.keys(selectedFilters).length > 0 && (
                   <button
@@ -431,7 +452,7 @@ export default function Index() {
         {/* Products Grid */}
         <div className="flex-1 overflow-y-auto">
           <div className="p-4 grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
-            {ideaResult.results.map((product, index) => (
+            {selectedGroup?.results.map((product, index) => (
               // {products.map((product, index) => (
               <ProductCard
                 key={index}

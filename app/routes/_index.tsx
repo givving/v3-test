@@ -5,12 +5,9 @@ import { Button } from "~/components/ui/button";
 // import { WheelSelector } from "~/components/WheelSelector";
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "@remix-run/react";
-import { WheelSelector } from "~/components/wheel";
 import { Header } from "~/components/ui/header";
 import { ArrowRight } from "lucide-react";
-import Picker from "react-mobile-picker";
 import { useSocket } from "~/useSocket";
-import { send } from "vite";
 // import useWebSocket from "react-use-websocket";
 
 export const meta: MetaFunction = () => {
@@ -67,15 +64,15 @@ const selections = {
     "Health & Wellbeing",
   ],
   budgets: [
-    "$0 - $100",
-    "$101 - $200",
-    "$201 - $300",
-    "$301 - $400",
-    "$401 - $500",
-    "$501 - $600",
-    "$601 - $700",
-    "$701 - $800",
-    "$801 - $900",
+    "$100",
+    "$200",
+    "$300",
+    "$400",
+    "$500",
+    "$600",
+    "$700",
+    "$800",
+    "$900",
   ],
 };
 
@@ -98,6 +95,7 @@ export default function Index() {
   const [budget, setBudget] = useState<string | undefined>(undefined);
   const [age, setAge] = useState<string | undefined>(undefined);
   const ss = useSocket();
+  const [isLoading, setIsLoading] = useState(false);
   // const websocketAddressV2 = "wss://gbgb.rd37.com:1880/gbgb/test";
 
   //   const { sendJsonMessage, lastJsonMessage, readyState } = useWebSocket(
@@ -133,8 +131,21 @@ export default function Index() {
     if (ss.message && ss.message.includes("results")) {
       console.log("WebSocket message result received:");
       const jsonObject = JSON.parse(ss.message);
-      // navigate("/ideas", )
-      navigate("/ideas", { state: { data: jsonObject } });
+      // Turn off loading
+      setIsLoading(false);
+      // navigate to results
+      navigate("/ideas", {
+        state: {
+          data: jsonObject,
+          query: {
+            gender: gender,
+            age: age,
+            likes: likes,
+            location: location,
+            budget: budget,
+          },
+        },
+      });
     }
   }, [ss.message]);
 
@@ -197,10 +208,11 @@ export default function Index() {
             <div
               key={index}
               onClick={() => {
-                // setAge("10 - 15");
-                toggleOverlay();
+                //
                 if (!age) {
                   setShowAgeOverlay(true);
+                } else {
+                  toggleOverlay();
                 }
                 setGender(item);
               }}
@@ -232,6 +244,7 @@ export default function Index() {
               onClick={() => {
                 setAge(item);
                 setShowAgeOverlay(false);
+                setShowOverlay(false);
               }}
               className={`p-3  cursor-pointer }`}
             >
@@ -480,7 +493,7 @@ export default function Index() {
         </div>
       )}
 
-      <div className="flex flex-col items-center gap-8 md:gap-16 w-full max-w-4xl px-4 mt-24 md:mt-48">
+      <div className="flex flex-col items-center gap-8 md:gap-16 w-full max-w-4xl px-4  mt-24 md:mt-48">
         <h1 className="md:leading-relaxed text-3xl md:text-5xl font-givving text-givving-primary">
           <span className="typewriter-text pr-1 inline-flex items-center ">
             {displayText}
@@ -561,7 +574,13 @@ export default function Index() {
                 className="typewriter-text pr-1 font-bold cursor-pointer"
                 onClick={() => setShowLikesOverlay(true)}
               >
-                {likes?.length ? likes.join(", ") : undefined}
+                {likes?.length
+                  ? likes.length === 1
+                    ? likes[0]
+                    : likes.slice(0, -1).join(", ") +
+                      " and " +
+                      likes[likes.length - 1]
+                  : undefined}
                 <br />
               </span>
             </>
@@ -589,27 +608,68 @@ export default function Index() {
                 {budget ? budget : undefined}
                 <br />
               </span>
-              {/* <Button variant="outline" onClick={() => navigate("/ideas")}>Lets Get Givving</Button> */}
-
               {budget && (
-                <Button
-                  variant="outline"
-                  className="rounded-full px-8 py-3 text-lg mt-6 hover:bg-givving-primary hover:text-white transition-colors"
-                  onClick={() => {
-                    ss.sendMessage(
-                      JSON.stringify({
-                        canned: "teen",
-                      }),
-                    );
-                  }}
-                >
-                  Lets Get Givving
-                </Button>
+                <div className="flex flex-col sm:flex-row gap-4 items-center sm:items-start mt-6 w-full sm:w-auto">
+                  <Button
+                    variant="outline"
+                    className="rounded-full px-4 sm:px-8 py-4 sm:py-5 text-base sm:text-lg font-semibold font-['Helvetica_Neue'] hover:bg-givving-primary hover:text-white transition-colors border-givving-primary max-w-[80%] mx-auto sm:mx-0 sm:w-auto"
+                    onClick={() => {
+                      // Set loading state to true
+                      setIsLoading(true);
+                      // conscruct the message to be sent
+                      // ss.sendMessage(
+                      //   JSON.stringify({
+                      //     canned: "teen",
+                      //   }),
+                      // );
+                      const query = {
+                        budget: parseInt(budget.replace(/[^0-9]/g, "")),
+                        who: gender,
+                        location: location,
+                        age: age,
+                        likes: likes,
+                      };
+                      console.log("query", query);
+                      ss.sendMessage(
+                        JSON.stringify({
+                          query,
+                        }),
+                      );
+                    }}
+                  >
+                    LET&apos;S GET GIVVING
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    className="text-gray-500 hover:text-gray-700 px-4 py-4 sm:py-5 text-base sm:text-lg font-medium transition-colors max-w-[80%] mx-auto sm:mx-0 sm:w-auto"
+                    onClick={() => {
+                      setGender(undefined);
+                      setLocation(undefined);
+                      setLikes(undefined);
+                      setCusLikes(undefined);
+                      setBudget(undefined);
+                      setAge(undefined);
+                      setDisplayText("Find a gift for a");
+                    }}
+                  >
+                    Clear this search
+                  </Button>
+                </div>
               )}
             </>
           )}
         </h1>
       </div>
+      {isLoading && (
+        <div className="fixed inset-0 bg-white bg-opacity-80 z-50 flex flex-col items-center justify-center animate-in fade-in duration-300">
+          <div className="flex flex-col items-center">
+            <div className="w-16 h-16 border-4 border-givving-primary border-t-transparent rounded-full animate-spin mb-4"></div>
+            <h2 className="text-2xl font-givving text-givving-primary">
+              Finding gift ideas...
+            </h2>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
