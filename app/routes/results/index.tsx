@@ -53,9 +53,12 @@ export default function Index() {
   // Add new state for sidebar visibility
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [showOverlay, setShowOverlay] = useState(false);
+  const [isFilter, setIsFilter] = useState(false);
   const [selectedProductFilters, setSelectedProductFilters] = useState<any[]>(
     [],
   );
+  const [showSearchOverlay, setShowSearchOverlay] = useState(false);
+
   const navigate = useNavigate();
   const [selectedFilters, setSelectedFilters] = useState<
     Record<string, string[]>
@@ -70,6 +73,7 @@ export default function Index() {
   // Products data
   // const navigate = useNavigate();
   const location = useLocation();
+  const [loadMsg, setLoadMsg] = useState<string | undefined>(undefined);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [ideaResult, setIdeaResult] = useState<any>(undefined);
@@ -97,15 +101,34 @@ export default function Index() {
   }, []);
 
   useEffect(() => {
+    console.log("ss.message");
     console.log(ss.message);
+    console.log(isFilter);
     // check if message contains results
-    if (ss.message && ss.message.includes("results")) {
+    if (ss.message && ss.message.includes("results") && !isFilter) {
       console.log("WebSocket message result received:");
       const jsonObject = JSON.parse(ss.message);
       // Turn off loading
       // navigate to results
       navigate("/ideas", { state: { data: jsonObject } });
       setIsLoading(false);
+    } else if (ss.message && ss.message.includes("results") && isFilter) {
+      console.log("filter set");
+      const jsonObject = JSON.parse(ss.message);
+
+      setSelectedGroup(jsonObject.results[0]);
+
+      setIsFilter(false);
+      setIsLoading(false);
+
+      //set new filter and products->
+      // render all the fitlers selected->>>
+    } else if (ss.message && ss.message.includes("progress")) {
+      console.log("set progress");
+
+      const jsonObject = JSON.parse(ss.message);
+
+      setLoadMsg(jsonObject.message);
     }
   }, [ss.message]);
 
@@ -124,20 +147,38 @@ export default function Index() {
 
   // Handle filter changes
   const handleFilterChange = (sectionId: string, optionId: string) => {
-    setSelectedFilters((prev) => {
-      const currentFilters = prev[sectionId] || [];
-      if (currentFilters.includes(optionId)) {
-        return {
-          ...prev,
-          [sectionId]: currentFilters.filter((id) => id !== optionId),
-        };
-      } else {
-        return {
-          ...prev,
-          [sectionId]: [...currentFilters, optionId],
-        };
-      }
-    });
+    console.log("handleFilterChange");
+    setIsFilter(true);
+    setIsLoading(true);
+    setShowOverlay(false);
+    const link =
+      selectedGroup?.filters[sectionId].options[optionId].serpapi_link;
+    console.log("link", link);
+    const text = selectedGroup?.filters[sectionId].options[optionId].text;
+    setSelectedProductFilters([...selectedProductFilters, text]);
+    ss.sendMessage(
+      JSON.stringify({
+        more: link,
+      }),
+    );
+    // sendJsonMessage({
+    //   more: giftSuggestions?.filters[i].options[j].serpapi_link,
+    // });
+
+    // setSelectedFilters((prev) => {
+    //   const currentFilters = prev[sectionId] || [];
+    //   if (currentFilters.includes(optionId)) {
+    //     return {
+    //       ...prev,
+    //       [sectionId]: currentFilters.filter((id) => id !== optionId),
+    //     };
+    //   } else {
+    //     return {
+    //       ...prev,
+    //       [sectionId]: [...currentFilters, optionId],
+    //     };
+    //   }
+    // });
   };
 
   const mapFilter = (filters: any) => {
@@ -204,7 +245,7 @@ export default function Index() {
               <div className="flex flex-col items-center">
                 <div className="w-16 h-16 border-4 border-givving-primary border-t-transparent rounded-full animate-spin mb-4"></div>
                 <h2 className="text-2xl font-givving text-givving-primary">
-                  Finding gift ideas...
+                  {loadMsg || "Finding gift ideas..."}
                 </h2>
               </div>
             </div>
@@ -366,28 +407,42 @@ export default function Index() {
           } bg-white border-r border-gray-200 overflow-y-auto overflow-x-hidden transition-all duration-300 ease-in-out hidden md:block`}
         >
           <div className="p-4">
-            {/* {filterSections.map(renderFilterSection)} */}
-            {mapFilter(selectedGroup?.filters).map(renderFilterSection)}
-
-            {Object.keys(selectedFilters).length > 0 && (
+            {selectedProductFilters?.map((selectedFilter, i) => (
+              <div key={i}>
+                <span className="text-gray-500">{selectedFilter}</span>
+              </div>
+            ))}
+            {selectedProductFilters.length > 0 && (
               <button
                 className="mt-4 text-blue-500 hover:text-blue-700 text-sm"
-                onClick={() => setSelectedFilters({})}
+                onClick={() => {
+                  setSelectedFilters({});
+                  setSelectedProductFilters([]);
+                  setSelectedGroup(ideaResult[selectedIndex]);
+                }}
               >
                 Clear all filters
               </button>
             )}
+            {mapFilter(selectedGroup?.filters).map(renderFilterSection)}
           </div>
         </div>
 
         {/* Mobile Filter Button */}
-        <div className="md:hidden fixed bottom-4 left-4 z-10">
+        <div className="md:hidden fixed bottom-4 left-4 z-10 flex gap-3">
           <button
             className="bg-white text-givving-primary border border-givving-primary px-5 py-3 rounded-full shadow-lg flex items-center gap-2 text-base"
             onClick={() => setShowOverlay(true)}
           >
             <Filter size={20} />
             <span>Filters</span>
+          </button>
+
+          <button
+            className="bg-white text-givving-primary border border-givving-primary px-5 py-3 rounded-full shadow-lg flex items-center gap-2 text-base"
+            onClick={() => setShowSearchOverlay(true)}
+          >
+            <Search size={20} />
           </button>
         </div>
 
@@ -424,8 +479,30 @@ export default function Index() {
                     </svg>
                   </button>
                 </div>
-
+                <div className="mt-6 pt-4 border-t border-gray-200">
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+                    {selectedProductFilters.length > 0 && (
+                      <button
+                        className=" text-blue-500 hover:text-blue-700 text-sm"
+                        onClick={() => {
+                          setSelectedFilters({});
+                          setShowOverlay(false);
+                          setSelectedProductFilters([]);
+                          setSelectedGroup(ideaResult[selectedIndex]);
+                        }}
+                      >
+                        Clear all filters
+                      </button>
+                    )}
+                  </div>
+                  {selectedProductFilters?.map((selectedFilter, i) => (
+                    <div key={i}>
+                      <span className="text-gray-500">{selectedFilter}</span>
+                    </div>
+                  ))}
+                </div>
                 {/* {filterSections.map(renderFilterSection)} */}
+                {mapFilter(selectedGroup?.filters).map(renderFilterSection)}
 
                 {Object.keys(selectedFilters).length > 0 && (
                   <button
@@ -435,16 +512,92 @@ export default function Index() {
                     Clear all filters
                   </button>
                 )}
-
-                <div className="mt-6 pt-4 border-t border-gray-200">
-                  <button
-                    className="w-full py-2 bg-blue-500 text-white rounded-md font-medium"
-                    onClick={() => setShowOverlay(false)}
-                  >
-                    Apply Filters
-                  </button>
-                </div>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Mobile Search Overlay */}
+        {showSearchOverlay && (
+          <div
+            className="fixed inset-0 bg-black bg-opacity-50 z-50 md:hidden flex flex-col justify-center items-center p-4"
+            onClick={() => setShowSearchOverlay(false)}
+          >
+            <div
+              className="w-full max-w-md bg-white rounded-lg p-4"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* <div className="flex justify-between items-center mb-4">
+                <button
+                  className="p-2 rounded-full hover:bg-gray-100"
+                  onClick={() => setShowSearchOverlay(false)}
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                  </svg>
+                </button>
+              </div> */}
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                  <Search size={18} className="text-givving-primary" />
+                </div>
+                <input
+                  type="text"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && e.currentTarget.value.trim()) {
+                      console.log("Search entered:", e.currentTarget.value);
+                      const query = {
+                        budget: 500,
+                        about: e.currentTarget.value,
+                      };
+                      ss.sendMessage(
+                        JSON.stringify({
+                          query,
+                        }),
+                      );
+                      setIsLoading(true);
+                      setShowSearchOverlay(false);
+                      e.currentTarget.value = "";
+                    }
+                  }}
+                  placeholder="Actually, I have an idea..."
+                  className="pl-12 pr-5 py-4 w-full text-sm border border-gray-300 rounded-full focus:outline-none focus:ring-1 focus:ring-givving-primary"
+                />
+              </div>
+              {/* <button
+                className="mt-4 w-full bg-givving-primary text-white py-3 rounded-full font-medium"
+                onClick={(e) => {
+                  const input =
+                    e.currentTarget.previousSibling?.querySelector("input");
+                  if (input && input.value.trim()) {
+                    const query = {
+                      budget: 500,
+                      about: input.value,
+                    };
+                    ss.sendMessage(
+                      JSON.stringify({
+                        query,
+                      }),
+                    );
+                    setIsLoading(true);
+                    setShowSearchOverlay(false);
+                    input.value = "";
+                  }
+                }}
+              >
+                Search
+              </button> */}
             </div>
           </div>
         )}

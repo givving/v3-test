@@ -22,7 +22,7 @@ export const useSocket = () => {
     };
 
     socket.onmessage = (event) => {
-      console.log("Message received:", event.data);
+      // console.log("Message received:", event.data);
       setMessages((prev) => [...prev, event.data]);
       setMessage(event.data);
     };

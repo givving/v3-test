@@ -7,6 +7,8 @@ import { useLocation, useNavigate } from "@remix-run/react";
 import { testData as DummyData } from "~/util/testData";
 import { Header } from "~/components/ui/header";
 import { Button } from "~/components/ui/button";
+import { Search } from "lucide-react";
+import { useSocket } from "~/useSocket";
 
 export const meta: MetaFunction = () => {
   return [
@@ -23,6 +25,8 @@ export const meta: MetaFunction = () => {
 export default function Index() {
   const navigate = useNavigate();
   const location = useLocation();
+  const [isLoading, setIsLoading] = useState(false);
+  const [loadMsg, setLoadMsg] = useState<string | undefined>(undefined);
   const state = location.state as { data?: any; query?: any };
   // location
   // State to track how many items to display
@@ -32,11 +36,33 @@ export default function Index() {
   // const displayedItems = testData.results.slice(0, displayCount);
   const testData = state?.data || DummyData;
   const displayedItems = testData.results.slice(0, displayCount);
+  const ss = useSocket();
 
   // Add state to track which items should be visible
   const [visibleItems, setVisibleItems] = useState<boolean[]>(
     Array(displayedItems.length).fill(false),
   );
+
+  useEffect(() => {
+    console.log("ss.message");
+    console.log(ss.message);
+    // check if message contains results
+    if (ss.message && ss.message.includes("results")) {
+      console.log("products found");
+      const jsonObject = JSON.parse(ss.message);
+      navigate("/ideas", { state: { data: jsonObject } });
+
+      // Turn off loading
+      setIsLoading(false);
+      // navigate to results
+    } else if (ss.message && ss.message.includes("progress")) {
+      console.log("set progress");
+
+      const jsonObject = JSON.parse(ss.message);
+
+      setLoadMsg(jsonObject.message);
+    }
+  }, [ss.message]);
 
   // Create sequential animation effect
   useEffect(() => {
@@ -82,7 +108,80 @@ export default function Index() {
 
   return (
     <div className="flex flex-col h-screen">
-      <Header />
+      {/* <Header /> */}
+      <header className="fixed top-0 left-0 w-full bg-white z-10 shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 py-3">
+          <div className="flex justify-center md:justify-start items-center cursor-pointer">
+            {/* Logo - centered on mobile, left-aligned on md screens and up */}
+            <div className="w-32">
+              <img src="/logo.png" alt="Logo" className="h-8 w-auto" />
+            </div>
+            {/* Desktop Search Box - Right aligned */}
+            <div className="hidden sm:block w-[400px]">
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                  <Search size={18} className="text-givving-primary" />
+                </div>
+                <input
+                  type="text"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && e.currentTarget.value.trim()) {
+                      console.log("enter clicked");
+                      console.log(e.currentTarget.value);
+                      const query = {
+                        budget: 500,
+                        about: e.currentTarget.value,
+                      };
+                      console.log("query", query);
+                      ss.sendMessage(
+                        JSON.stringify({
+                          query,
+                        }),
+                      );
+                      setIsLoading(true);
+                      e.currentTarget.value = "";
+                    }
+                  }}
+                  placeholder="Actually, I have an idea..."
+                  className="pl-12 pr-5 py-4 w-full text-sm border border-gray-300 rounded-full focus:outline-none focus:ring-1 focus:ring-givving-primary"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Mobile Search Box - Full width below header */}
+          <div className="sm:hidden w-full mt-3">
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                <Search size={18} className="text-givving-primary" />
+              </div>
+              <input
+                type="text"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && e.currentTarget.value.trim()) {
+                    console.log("enter clicked");
+                    console.log(e.currentTarget.value);
+                    const query = {
+                      budget: 500,
+                      about: e.currentTarget.value,
+                    };
+                    console.log("query", query);
+                    ss.sendMessage(
+                      JSON.stringify({
+                        query,
+                      }),
+                    );
+                    setIsLoading(true);
+                    e.currentTarget.value = "";
+                  }
+                }}
+                placeholder="Actually, I have an idea..."
+                className="pl-12 pr-5 py-3 w-full text-sm border border-gray-300 rounded-full focus:outline-none focus:ring-1 focus:ring-givving-primary"
+              />
+            </div>
+          </div>
+        </div>
+      </header>
 
       {/* Scrollable Content Area */}
       <div className="flex-1 overflow-y-auto pt-16">
@@ -143,14 +242,39 @@ export default function Index() {
                   SHOW MORE IDEAS
                 </Button>
               ) : (
-                <p className="text-givving-primary text-sm font-bold">
-                  All ideas shown
-                </p>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    // Trigger a new recommendation search with the same criteria
+                    console.log("");
+                    // if (state?.query) {
+                    //   setIsLoading(true);
+                    //   ss.sendMessage(
+                    //     JSON.stringify({
+                    //       query: state.query,
+                    //     }),
+                    //   );
+                    // }
+                  }}
+                  className="rounded-full border-blue-500 text-givving-primary font-bold hover:bg-blue-500 hover:text-white transition-colors px-6"
+                >
+                  FIND MORE GIFTS
+                </Button>
               )}
             </div>
           </div>
         </div>
       </div>
+      {isLoading && (
+        <div className="fixed inset-0 bg-white bg-opacity-80 z-50 flex flex-col items-center justify-center animate-in fade-in duration-300">
+          <div className="flex flex-col items-center">
+            <div className="w-16 h-16 border-4 border-givving-primary border-t-transparent rounded-full animate-spin mb-4"></div>
+            <h2 className="text-2xl font-givving text-givving-primary">
+              {loadMsg || "Finding gift ideas..."}
+            </h2>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

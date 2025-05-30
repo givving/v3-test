@@ -85,6 +85,20 @@ export default function Index() {
 
   const navigate = useNavigate();
 
+  const [ageOptions, setAgeOptions] = useState<string[] | undefined>(undefined);
+  const [genderOptions, setGenderOptions] = useState<string[] | undefined>(
+    undefined,
+  );
+  const [locationsOptions, setLocationsOptions] = useState<
+    string[] | undefined
+  >(undefined);
+  const [budgetsOptions, setBudgetsOptions] = useState<string[] | undefined>(
+    undefined,
+  );
+  const [likesOptions, setKLikesOptions] = useState<string[] | undefined>(
+    undefined,
+  );
+
   // Text to be animated
   const fullText = "Find a gift for a";
   const [displayText, setDisplayText] = useState<string | undefined>(undefined);
@@ -96,6 +110,8 @@ export default function Index() {
   const [age, setAge] = useState<string | undefined>(undefined);
   const ss = useSocket();
   const [isLoading, setIsLoading] = useState(false);
+  const [loadMsg, setLoadMsg] = useState<string | undefined>(undefined);
+
   // const websocketAddressV2 = "wss://gbgb.rd37.com:1880/gbgb/test";
 
   //   const { sendJsonMessage, lastJsonMessage, readyState } = useWebSocket(
@@ -126,10 +142,11 @@ export default function Index() {
   }, [ss.isConnected]);
 
   useEffect(() => {
+    console.log("ss.message");
     console.log(ss.message);
     // check if message contains results
     if (ss.message && ss.message.includes("results")) {
-      console.log("WebSocket message result received:");
+      console.log("products found");
       const jsonObject = JSON.parse(ss.message);
       // Turn off loading
       setIsLoading(false);
@@ -146,6 +163,29 @@ export default function Index() {
           },
         },
       });
+    } else if (ss.message && ss.message.includes("progress")) {
+      console.log("set progress");
+
+      const jsonObject = JSON.parse(ss.message);
+
+      setLoadMsg(jsonObject.message);
+    } else if (ss.message && ss.message.includes("location")) {
+      // TODO, need to change this to a better way of checking
+      console.log("set options");
+      const jsonObject = JSON.parse(ss.message);
+      setAgeOptions(jsonObject.age);
+      setLocationsOptions(jsonObject.location);
+      setBudgetsOptions(jsonObject.budget);
+      setGenderOptions(jsonObject.gender);
+      // setLoadMsg(jsonObject.message);
+      // } else if (ss.message && ss.message.includes("standard")) {
+    } else {
+      if (!ss.message) return;
+      const jsonObject = JSON.parse(ss.message);
+      console.log("likes");
+      // console.log("likes", jsonObject.likes);
+      const keys = Object.keys(jsonObject.likes); // Type: string[]
+      setKLikesOptions(keys);
     }
   }, [ss.message]);
 
@@ -204,7 +244,7 @@ export default function Index() {
           <h2 className="text-2xl font-givving text-givving-primary mb-6 text-center">
             Gender
           </h2>
-          {selections.gender.map((item, index) => (
+          {genderOptions?.map((item, index) => (
             <div
               key={index}
               onClick={() => {
@@ -235,28 +275,34 @@ export default function Index() {
           className="fixed inset-0 bg-[#F2F4FC] z-50 flex flex-col items-center justify-center 
             animate-in fade-in slide-in-from-bottom-4 duration-300 ease-in-out"
         >
-          <h2 className="text-2xl font-givving text-givving-primary mb-6 text-center">
-            Age
-          </h2>
-          {selections.age.map((item, index) => (
-            <div
-              key={index}
-              onClick={() => {
-                setAge(item);
-                setShowAgeOverlay(false);
-                setShowOverlay(false);
-              }}
-              className={`p-3  cursor-pointer }`}
-            >
-              <div className="flex items-center gap-3">
-                <div>
-                  <p className="text-3xl font-givving text-givving-primary font-semibold">
-                    {item}
-                  </p>
+          <div className="w-full max-w-2xl px-4 py-6 flex flex-col max-h-[90vh]">
+            <h2 className="text-2xl font-givving text-givving-primary mb-6 text-center">
+              Age
+            </h2>
+
+            {/* Scrollable container */}
+            <div className="overflow-y-auto max-h-[60vh] flex flex-col items-center">
+              {ageOptions?.map((item, index) => (
+                <div
+                  key={index}
+                  onClick={() => {
+                    setAge(item);
+                    setShowAgeOverlay(false);
+                    setShowOverlay(false);
+                  }}
+                  className="p-3 cursor-pointer w-full text-center"
+                >
+                  <div className="flex items-center justify-center gap-3">
+                    <div>
+                      <p className="text-3xl font-givving text-givving-primary font-semibold">
+                        {item}
+                      </p>
+                    </div>
+                  </div>
                 </div>
-              </div>
+              ))}
             </div>
-          ))}
+          </div>
         </div>
       )}
       {showLocationOverlay && (
@@ -267,7 +313,7 @@ export default function Index() {
           <h2 className="text-2xl font-givving text-givving-primary mb-6 text-center">
             Location
           </h2>
-          {selections.locations.map((item, index) => (
+          {locationsOptions?.map((item, index) => (
             <div
               key={index}
               onClick={() => {
@@ -310,9 +356,9 @@ export default function Index() {
       {showLikesOverlay && (
         <div
           className="fixed inset-0 bg-[#F2F4FC] z-50 flex flex-col items-center justify-center 
-          animate-in fade-in slide-in-from-bottom-4 duration-300 ease-in-out"
+    animate-in fade-in slide-in-from-bottom-4 duration-300 ease-in-out"
         >
-          <div className="w-full max-w-2xl px-4 py-6">
+          <div className="w-full max-w-2xl px-4 py-6 flex flex-col max-h-[90vh]">
             <h2 className="text-2xl font-givving text-givving-primary mb-6 text-center">
               Interests (max 5)
             </h2>
@@ -352,10 +398,11 @@ export default function Index() {
               </div>
             </div>
 
-            <div className="items-center justify-center flex flex-wrap">
-              {selections.likes.map((item, index) => {
+            {/* Make this div scrollable */}
+            <div className="items-center justify-center flex flex-wrap overflow-y-auto max-h-[50vh] p-2">
+              {likesOptions?.map((item, index) => {
                 // Remove duplicates from the array
-                if (selections.likes.indexOf(item) !== index) return null;
+                if (likesOptions?.indexOf(item) !== index) return null;
 
                 // Check if this item is already selected
                 const isSelected = likes?.includes(item) || false;
@@ -563,7 +610,17 @@ export default function Index() {
                   <Button
                     variant="outline"
                     className="rounded-full border-givving-primary px-3 py-2 text-sm font-bold font-['Helvetica_Neue'] hover:bg-givving-primary hover:text-white"
-                    onClick={() => setShowLikesOverlay(true)}
+                    onClick={() => {
+                      const queryData = {
+                        data: {
+                          age,
+                          gender,
+                          location,
+                        },
+                      };
+                      ss.sendMessage(JSON.stringify(queryData));
+                      setShowLikesOverlay(true);
+                    }}
                   >
                     CHOOSE
                     <ArrowRight className="ml-2 inline w-5 h-5" />
@@ -594,7 +651,9 @@ export default function Index() {
                   <Button
                     variant="outline"
                     className="rounded-full border-givving-primary px-3 py-2 text-sm font-bold font-['Helvetica_Neue'] hover:bg-givving-primary hover:text-white"
-                    onClick={() => setBudgetShowOverlay(true)}
+                    onClick={() => {
+                      setBudgetShowOverlay(true);
+                    }}
                   >
                     CHOOSE
                     <ArrowRight className="ml-2 inline w-5 h-5" />
@@ -665,7 +724,7 @@ export default function Index() {
           <div className="flex flex-col items-center">
             <div className="w-16 h-16 border-4 border-givving-primary border-t-transparent rounded-full animate-spin mb-4"></div>
             <h2 className="text-2xl font-givving text-givving-primary">
-              Finding gift ideas...
+              {loadMsg || "Finding gift ideas..."}
             </h2>
           </div>
         </div>
