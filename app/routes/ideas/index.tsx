@@ -247,14 +247,15 @@ export default function Index() {
                   onClick={() => {
                     // Trigger a new recommendation search with the same criteria
                     console.log("");
-                    // if (state?.query) {
-                    //   setIsLoading(true);
-                    //   ss.sendMessage(
-                    //     JSON.stringify({
-                    //       query: state.query,
-                    //     }),
-                    //   );
-                    // }
+                    console.log(state?.query);
+                    if (state?.query) {
+                      setIsLoading(true);
+                      ss.sendMessage(
+                        JSON.stringify({
+                          query: state.query,
+                        }),
+                      );
+                    }
                   }}
                   className="rounded-full border-blue-500 text-givving-primary font-bold hover:bg-blue-500 hover:text-white transition-colors px-6"
                 >

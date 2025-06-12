@@ -6,7 +6,7 @@ import { Button } from "~/components/ui/button";
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "@remix-run/react";
 import { Header } from "~/components/ui/header";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, X } from "lucide-react";
 import { useSocket } from "~/useSocket";
 // import useWebSocket from "react-use-websocket";
 
@@ -182,9 +182,12 @@ export default function Index() {
     } else {
       if (!ss.message) return;
       const jsonObject = JSON.parse(ss.message);
-      console.log("likes");
-      // console.log("likes", jsonObject.likes);
-      const keys = Object.keys(jsonObject.likes); // Type: string[]
+      // console.log("likes");
+      // console.log("likes", jsonObject.standard);
+      const keys = Object.keys(
+        jsonObject.likes.length < 1 ? jsonObject.standard : jsonObject.likes,
+      ); // Type: string[]
+      // console.log("keys", keys);
       setKLikesOptions(keys);
     }
   }, [ss.message]);
@@ -241,6 +244,15 @@ export default function Index() {
           className="fixed inset-0 bg-[#F2F4FC] z-50 flex flex-col items-center justify-center 
             animate-in fade-in slide-in-from-bottom-4 duration-300 ease-in-out"
         >
+          {/* Close button */}
+          <button
+            onClick={() => setShowOverlay(false)}
+            className="absolute top-4 right-4 p-2 rounded-full hover:bg-gray-200 transition-colors"
+            aria-label="Close"
+          >
+            <X size={24} className="text-givving-primary" />
+          </button>
+
           <h2 className="text-2xl font-givving text-givving-primary mb-6 text-center">
             Gender
           </h2>
@@ -252,6 +264,7 @@ export default function Index() {
                 if (!age) {
                   setShowAgeOverlay(true);
                 } else {
+                  // setShowAgeOverlay(false);
                   toggleOverlay();
                 }
                 setGender(item);
@@ -275,6 +288,15 @@ export default function Index() {
           className="fixed inset-0 bg-[#F2F4FC] z-50 flex flex-col items-center justify-center 
             animate-in fade-in slide-in-from-bottom-4 duration-300 ease-in-out"
         >
+          {/* Close button */}
+          <button
+            onClick={() => setShowAgeOverlay(false)}
+            className="absolute top-4 right-4 p-2 rounded-full hover:bg-gray-200 transition-colors"
+            aria-label="Close"
+          >
+            <X size={24} className="text-givving-primary" />
+          </button>
+
           <div className="w-full max-w-2xl px-4 py-6 flex flex-col max-h-[90vh]">
             <h2 className="text-2xl font-givving text-givving-primary mb-6 text-center">
               Age
@@ -288,7 +310,9 @@ export default function Index() {
                   onClick={() => {
                     setAge(item);
                     setShowAgeOverlay(false);
-                    setShowOverlay(false);
+                    if (!age) {
+                      setShowOverlay(true);
+                    }
                   }}
                   className="p-3 cursor-pointer w-full text-center"
                 >
@@ -310,6 +334,15 @@ export default function Index() {
           className="fixed inset-0 bg-[#F2F4FC] z-50 flex flex-col items-center justify-center 
             animate-in fade-in slide-in-from-bottom-4 duration-300 ease-in-out"
         >
+          {/* Close button */}
+          <button
+            onClick={() => setShowLocationOverlay(false)}
+            className="absolute top-4 right-4 p-2 rounded-full hover:bg-gray-200 transition-colors"
+            aria-label="Close"
+          >
+            <X size={24} className="text-givving-primary" />
+          </button>
+
           <h2 className="text-2xl font-givving text-givving-primary mb-6 text-center">
             Location
           </h2>
@@ -358,6 +391,15 @@ export default function Index() {
           className="fixed inset-0 bg-[#F2F4FC] z-50 flex flex-col items-center justify-center 
     animate-in fade-in slide-in-from-bottom-4 duration-300 ease-in-out"
         >
+          {/* Close button */}
+          <button
+            onClick={() => setShowLikesOverlay(false)}
+            className="absolute top-4 right-4 p-2 rounded-full hover:bg-gray-200 transition-colors"
+            aria-label="Close"
+          >
+            <X size={24} className="text-givving-primary" />
+          </button>
+
           <div className="w-full max-w-2xl px-4 py-6 flex flex-col max-h-[90vh]">
             <h2 className="text-2xl font-givving text-givving-primary mb-6 text-center">
               Interests (max 5)
@@ -367,7 +409,8 @@ export default function Index() {
                 <input
                   type="text"
                   placeholder="Add custom interest(s)"
-                  className="bg-white rounded-full py-2 px-4 w-full shadow-sm focus:outline-none focus:ring-1 focus:ring-givving-primary"
+                  className="bg-white rounded-l-full py-2 px-4 w-full shadow-sm focus:outline-none focus:ring-1 focus:ring-givving-primary"
+                  id="custom-interest-input"
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && e.currentTarget.value.trim()) {
                       // Prevent adding if already at max
@@ -395,6 +438,37 @@ export default function Index() {
                     }
                   }}
                 />
+                <button
+                  className="bg-givving-primary text-white px-4 rounded-r-full font-medium hover:bg-givving-primary/90 transition-colors"
+                  onClick={() => {
+                    const input = document.getElementById(
+                      "custom-interest-input",
+                    ) as HTMLInputElement;
+                    if (input && input.value.trim()) {
+                      if (
+                        likes?.length === 5 &&
+                        !likes.includes(input.value.trim())
+                      ) {
+                        return;
+                      }
+                      const newValue = input.value.trim();
+                      setLikes((prev) => {
+                        if (!prev) return [newValue];
+                        if (prev.includes(newValue)) return prev;
+                        return [...prev, newValue];
+                      });
+                      setCusLikes((prev) => {
+                        if (!prev) return [newValue];
+                        if (prev.includes(newValue)) return prev;
+                        return [...prev, newValue];
+                      });
+
+                      input.value = "";
+                    }
+                  }}
+                >
+                  Add
+                </button>
               </div>
             </div>
 
@@ -514,6 +588,15 @@ export default function Index() {
           className="fixed inset-0 bg-[#F2F4FC] z-50 flex flex-col items-center justify-center 
             animate-in fade-in slide-in-from-bottom-4 duration-300 ease-in-out"
         >
+          {/* Close button */}
+          <button
+            onClick={() => setBudgetShowOverlay(false)}
+            className="absolute top-4 right-4 p-2 rounded-full hover:bg-gray-200 transition-colors"
+            aria-label="Close"
+          >
+            <X size={24} className="text-givving-primary" />
+          </button>
+
           <h2 className="text-2xl font-givving text-givving-primary mb-6 text-center">
             Budget
           </h2>
@@ -550,7 +633,7 @@ export default function Index() {
                 <Button
                   variant="outline"
                   className={`transition-opacity duration-500 ease-in ${showButton ? "opacity-100" : "opacity-0"} rounded-full border-givving-primary px-3 py-2 text-sm font-bold font-['Helvetica_Neue'] hover:bg-givving-primary hover:text-white`}
-                  onClick={() => toggleOverlay()}
+                  onClick={() => setShowAgeOverlay(true)}
                 >
                   CHOOSE
                   <ArrowRight className="ml-2 inline w-5 h-5" />
@@ -696,7 +779,7 @@ export default function Index() {
                       );
                     }}
                   >
-                    LET&apos;S GET GIVVING
+                    Create gift ideas
                   </Button>
                   <Button
                     variant="ghost"
@@ -711,7 +794,7 @@ export default function Index() {
                       setDisplayText("Find a gift for a");
                     }}
                   >
-                    Clear this search
+                    Start again
                   </Button>
                 </div>
               )}
