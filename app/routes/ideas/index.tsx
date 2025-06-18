@@ -7,7 +7,7 @@ import { useLocation, useNavigate } from "@remix-run/react";
 import { testData as DummyData } from "~/util/testData";
 import { Header } from "~/components/ui/header";
 import { Button } from "~/components/ui/button";
-import { Search } from "lucide-react";
+import { Search, X } from "lucide-react";
 import { useSocket } from "~/useSocket";
 
 export const meta: MetaFunction = () => {
@@ -31,6 +31,8 @@ export default function Index() {
   // location
   // State to track how many items to display
   const [displayCount, setDisplayCount] = useState(5);
+  // Add state for mobile search overlay
+  const [showSearchOverlay, setShowSearchOverlay] = useState(false);
 
   // Get data based on current display count
   // const displayedItems = testData.results.slice(0, displayCount);
@@ -100,10 +102,27 @@ export default function Index() {
         ? likes.length === 1
           ? likes[0]
           : likes.slice(0, -1).join(", ") + " and " + likes[likes.length - 1]
-        : "") +
+        : " ") +
       "with a budget of " +
       state.query.budget
     );
+  };
+
+  const handleSearch = (searchText: string) => {
+    if (searchText.trim()) {
+      const query = {
+        budget: 500,
+        about: searchText,
+      };
+      console.log("query", query);
+      ss.sendMessage(
+        JSON.stringify({
+          query,
+        }),
+      );
+      setIsLoading(true);
+      setShowSearchOverlay(false); // Hide overlay after search
+    }
   };
 
   return (
@@ -111,34 +130,23 @@ export default function Index() {
       {/* <Header /> */}
       <header className="fixed top-0 left-0 w-full bg-white z-10 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 py-3">
-          <div className="flex justify-center md:justify-start items-center cursor-pointer">
-            {/* Logo - centered on mobile, left-aligned on md screens and up */}
+          <div className="flex justify-between items-center">
+            {/* Logo - left-aligned */}
             <div className="w-32">
               <img src="/logo.png" alt="Logo" className="h-8 w-auto" />
             </div>
+
             {/* Desktop Search Box - Right aligned */}
-            <div className="hidden sm:block w-[400px]">
-              <div className="relative">
+            <div className="hidden sm:flex justify-end flex-1">
+              <div className="relative w-[400px]">
                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                   <Search size={18} className="text-givving-primary" />
                 </div>
                 <input
                   type="text"
                   onKeyDown={(e) => {
-                    if (e.key === "Enter" && e.currentTarget.value.trim()) {
-                      console.log("enter clicked");
-                      console.log(e.currentTarget.value);
-                      const query = {
-                        budget: 500,
-                        about: e.currentTarget.value,
-                      };
-                      console.log("query", query);
-                      ss.sendMessage(
-                        JSON.stringify({
-                          query,
-                        }),
-                      );
-                      setIsLoading(true);
+                    if (e.key === "Enter") {
+                      handleSearch(e.currentTarget.value);
                       e.currentTarget.value = "";
                     }
                   }}
@@ -147,41 +155,49 @@ export default function Index() {
                 />
               </div>
             </div>
-          </div>
 
-          {/* Mobile Search Box - Full width below header */}
-          <div className="sm:hidden w-full mt-3">
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                <Search size={18} className="text-givving-primary" />
-              </div>
-              <input
-                type="text"
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && e.currentTarget.value.trim()) {
-                    console.log("enter clicked");
-                    console.log(e.currentTarget.value);
-                    const query = {
-                      budget: 500,
-                      about: e.currentTarget.value,
-                    };
-                    console.log("query", query);
-                    ss.sendMessage(
-                      JSON.stringify({
-                        query,
-                      }),
-                    );
-                    setIsLoading(true);
-                    e.currentTarget.value = "";
-                  }
-                }}
-                placeholder="Actually, I have an idea..."
-                className="pl-12 pr-5 py-3 w-full text-sm border border-gray-300 rounded-full focus:outline-none focus:ring-1 focus:ring-givving-primary"
+            {/* Mobile search icon */}
+            <div className="sm:hidden">
+              <Search
+                size={22}
+                className="text-givving-primary cursor-pointer"
+                onClick={() => setShowSearchOverlay(true)}
               />
             </div>
           </div>
         </div>
       </header>
+
+      {/* Mobile Search Overlay */}
+      {showSearchOverlay && (
+        <div className="fixed inset-0 bg-white z-50 p-4 sm:hidden animate-in fade-in duration-300">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-givving text-givving-primary"> </h2>
+            <X
+              size={24}
+              className="text-givving-primary cursor-pointer"
+              onClick={() => setShowSearchOverlay(false)}
+            />
+          </div>
+          <div className="relative">
+            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+              <Search size={18} className="text-givving-primary" />
+            </div>
+            <input
+              type="text"
+              autoFocus
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  handleSearch(e.currentTarget.value);
+                  e.currentTarget.value = "";
+                }
+              }}
+              placeholder="Actually, I have an idea..."
+              className="pl-12 pr-5 py-4 w-full text-sm border border-gray-300 rounded-full focus:outline-none focus:ring-1 focus:ring-givving-primary"
+            />
+          </div>
+        </div>
+      )}
 
       {/* Scrollable Content Area */}
       <div className="flex-1 overflow-y-auto pt-16">
@@ -195,7 +211,7 @@ export default function Index() {
                 className="mb-6 text-gray-400 underline cursor-pointer font-normal"
                 onClick={() => navigate("/")}
               >
-                Edit search
+                Start Again
               </span>
             </div>
 
@@ -270,7 +286,7 @@ export default function Index() {
         <div className="fixed inset-0 bg-white bg-opacity-80 z-50 flex flex-col items-center justify-center animate-in fade-in duration-300">
           <div className="flex flex-col items-center">
             <div className="w-16 h-16 border-4 border-givving-primary border-t-transparent rounded-full animate-spin mb-4"></div>
-            <h2 className="text-2xl font-givving text-givving-primary">
+            <h2 className="text-2xl font-givving text-givving-primary px-4">
               {loadMsg || "Finding gift ideas..."}
             </h2>
           </div>

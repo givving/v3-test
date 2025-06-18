@@ -623,8 +623,10 @@ export default function Index() {
         </div>
       )}
 
-      <div className="flex flex-col items-center gap-8 md:gap-16 w-full max-w-4xl px-4  mt-24 md:mt-48">
-        <h1 className="md:leading-relaxed text-3xl md:text-5xl font-givving text-givving-primary">
+      <div
+        className={`flex flex-col items-center md:items-start gap-8 md:gap-16 w-full max-w-4xl px-4 md:px-8 mt-24 ${age ? "md:mt-24" : "md:mt-48"}`}
+      >
+        <h1 className="md:leading-relaxed text-3xl md:text-5xl font-givving text-givving-primary text-center md:text-left w-full">
           <span className="typewriter-text pr-1 inline-flex items-center ">
             {displayText}
             {!age && !gender && (
@@ -806,7 +808,7 @@ export default function Index() {
         <div className="fixed inset-0 bg-white bg-opacity-80 z-50 flex flex-col items-center justify-center animate-in fade-in duration-300">
           <div className="flex flex-col items-center">
             <div className="w-16 h-16 border-4 border-givving-primary border-t-transparent rounded-full animate-spin mb-4"></div>
-            <h2 className="text-2xl font-givving text-givving-primary">
+            <h2 className="text-2xl font-givving text-givving-primary px-4">
               {loadMsg || "Finding gift ideas..."}
             </h2>
           </div>
